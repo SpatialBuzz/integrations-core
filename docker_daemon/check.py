@@ -881,6 +881,16 @@ class DockerDaemon(AgentCheck):
 
         for ev, c_name in events:
             max_timestamp = max(max_timestamp, int(ev['time']))
+            signal = None
+            try:
+                signal = ev['Actor']['Attributes']['signal']
+            except:
+                pass
+            if ev['status'] == 'kill' and signal == '15':
+                self.log.info('Skipping status={} signal={}'.format(ev['status'], signal))
+                continue
+            else:
+                self.log.info('Not skipping status={} signal={}'.format(ev['status'], signal))
             status[ev['status']] += 1
             status_change.append([c_name, ev['status']])
 
@@ -898,7 +908,7 @@ class DockerDaemon(AgentCheck):
             status_changes="\n".join(
                 ["%s \t%s" % (change[1].upper(), change[0]) for change in status_change])
         )
-
+        alert_type = None
         if any(error in status_text for error in ERROR_ALERT_TYPE):
             alert_type = "error"
         else:
